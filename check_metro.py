@@ -284,12 +284,43 @@ def redirigir_salida(ruta: Path, max_bytes: int = 1_000_000) -> None:
 # --------------------------------------------------------------------------- #
 # Flujo principal
 # --------------------------------------------------------------------------- #
-def verificar(ruta_estado: Path) -> int:
+def leer_simulacion(ruta: Path) -> dict | None:
+    """Lee y consume (borra) un archivo de simulación de un solo uso, si existe."""
+    if not ruta.exists():
+        return None
+    try:
+        return json.loads(ruta.read_text(encoding="utf-8-sig"))
+    except (json.JSONDecodeError, OSError) as err:
+        print(f"Simulación ignorada: {ruta.name} no es JSON válido ({err})", file=sys.stderr)
+        return None
+    finally:
+        try:
+            ruta.unlink()
+        except OSError:
+            pass
+
+
+def resumen_html(actual: dict) -> str:
+    return (f"🚇 <b>Metro de Santiago</b> · {html.escape(hora_chile())}\n\n"
+            + html.escape(resumen_actual(actual)).replace("     - ", "   • "))
+
+
+def verificar(ruta_estado: Path, ruta_simulacion: Path | None = None) -> int:
     guardado = cargar_estado(ruta_estado)
     fallos_previos = int(guardado.get("fallos_consecutivos", 0))
 
+    simulado = leer_simulacion(ruta_simulacion) if ruta_simulacion else None
+
+    def notificar(mensaje: str) -> list[str]:
+        if simulado is not None:
+            mensaje = "🧪 <b>SIMULACIÓN</b> (no es real)\n" + mensaje
+        return enviar(mensaje)
+
+    if simulado is not None:
+        print(f"SIMULACIÓN: usando {ruta_simulacion.name} en lugar de metro.cl")
+
     try:
-        actual = normalizar(descargar_estado())
+        actual = normalizar(simulado if simulado is not None else descargar_estado())
     except ErrorConsulta as err:
         fallos = fallos_previos + 1
         print(f"Error ({fallos} seguido/s): {err}", file=sys.stderr)
@@ -297,7 +328,7 @@ def verificar(ruta_estado: Path) -> int:
         guardar_estado(ruta_estado, guardado)
         if fallos == FALLOS_PARA_AVISAR:
             try:
-                enviar("🛠️ <b>Monitor Metro</b>: no puedo consultar el estado de la red desde hace "
+                notificar("🛠️ <b>Monitor Metro</b>: no puedo consultar el estado de la red desde hace "
                        f"{fallos} intentos seguidos.\n<i>{html.escape(str(err))[:300]}</i>")
             except Exception as e:  # el aviso es secundario
                 print(f"No se pudo enviar el aviso de falla: {e}", file=sys.stderr)
@@ -310,7 +341,7 @@ def verificar(ruta_estado: Path) -> int:
     if cambios:
         mensaje = formatear_cambios(cambios)
         try:
-            canales = enviar(mensaje)
+            canales = notificar(mensaje)
         except Exception as err:
             # No se guarda el estado: el próximo ciclo reintenta el envío.
             print(f"Error al enviar la alerta: {err}", file=sys.stderr)
@@ -318,12 +349,16 @@ def verificar(ruta_estado: Path) -> int:
         print(f"{len(cambios)} cambio(s) notificados por: {', '.join(canales) or 'consola'}")
     elif primera_vez:
         print("Primera ejecución: estado base guardado, sin alertas.")
+    elif simulado is not None:
+        # En simulación, "sin cambios" también se notifica para ver el caso "todo bien".
+        notificar(resumen_html(actual))
+        print("Sin cambios (resumen simulado enviado).")
     else:
         print("Sin cambios.")
 
     if fallos_previos >= FALLOS_PARA_AVISAR:
         try:
-            enviar("🛠️ <b>Monitor Metro</b>: la consulta volvió a funcionar.")
+            notificar("🛠️ <b>Monitor Metro</b>: la consulta volvió a funcionar.")
         except Exception as e:
             print(f"No se pudo enviar el aviso de recuperación: {e}", file=sys.stderr)
 
@@ -371,7 +406,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Error: {err}", file=sys.stderr)
             return 1
         return 0
-    return verificar(Path(args.estado))
+    return verificar(Path(args.estado), carpeta / "simulacion.json")
 
 
 if __name__ == "__main__":

@@ -42,7 +42,9 @@ La configuración queda en `.env`, el último estado en `estado.json` y el regis
 suspendido. Al volver, la tarea se pone al día sola. Para tener alertas 24/7, sirven
 el mismo script y la misma Skill en un celular Android viejo (Termux) o una Raspberry Pi.
 
-**Desinstalar**: `powershell -ExecutionPolicy Bypass -File .\instalar_windows.ps1 -Desinstalar`
+**Detener / desinstalar**: doble clic en `DESINSTALAR.bat`. Elimina la tarea programada y conserva `.env`, `estado.json` y `monitor.log`. Para reactivarlo, vuelve a ejecutar `INSTALAR.bat` y responde **s** cuando pregunte si mantener la configuración.
+
+**Pruebas de alertas**: si dejas un `simulacion.json` (mismo formato que el endpoint) junto al script, la siguiente revisión lo usa en lugar de metro.cl, marca el mensaje como 🧪 SIMULACIÓN y borra el archivo.
 
 ## Uso local
 

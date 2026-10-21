@@ -110,6 +110,25 @@ class TestFlujo(unittest.TestCase):
         _, env = self.correr(FIXTURE)  # recuperación
         self.assertIn("volvió a funcionar", env.call_args[0][0])
 
+    def test_simulacion_un_solo_uso(self):
+        self.correr(FIXTURE)
+        sim = Path(self.tmp.name) / "simulacion.json"
+        enviados = []
+        for datos, esperado in ((FIXTURE, "Línea 1"), (CERRADA, "Incidencias"), (FIXTURE, "Normalizado")):
+            sim.write_text(json.dumps(datos), encoding="utf-8")
+            with mock.patch.object(cm, "descargar_estado", side_effect=AssertionError("no debe consultar")), \
+                 mock.patch.object(cm, "enviar", return_value=["telegram"]) as env, \
+                 mock.patch("builtins.print"):
+                self.assertEqual(cm.verificar(self.ruta, sim), 0)
+            self.assertFalse(sim.exists(), "el archivo de simulación debe consumirse")
+            msg = env.call_args[0][0]
+            self.assertTrue(msg.startswith("🧪"))
+            self.assertIn(esperado, msg)
+            enviados.append(msg)
+        # Sin archivo: vuelve a la fuente real y sin cambios no envía nada
+        _, env = self.correr(FIXTURE)
+        env.assert_not_called()
+
     def test_registra_codigos_vistos(self):
         self.correr(FIXTURE)
         self.correr(CERRADA)
