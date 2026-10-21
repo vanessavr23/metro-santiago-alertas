@@ -1,0 +1,63 @@
+name: Monitoreo Metro Santiago
+
+on:
+  schedule:
+    # Cada 10 minutos, desfasado (min 7, 17, 27...) para evitar la congestión de :00.
+    # GitHub usa UTC y puede retrasar algunos minutos las ejecuciones programadas.
+    - cron: '7-59/10 * * * *'
+  workflow_dispatch:
+    inputs:
+      probar_envio:
+        description: 'Enviar un mensaje de prueba a Telegram/Discord'
+        type: boolean
+        default: false
+
+# Nunca dos ejecuciones a la vez: evita conflictos al guardar estado.json
+concurrency:
+  group: metro-check
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  check-metro:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Mensaje de prueba
+        if: ${{ inputs.probar_envio }}
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: python check_metro.py --probar-envio
+
+      - name: Verificar estado de la red
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: python check_metro.py
+
+      - name: Guardar estado si cambió
+        if: always()
+        run: |
+          if git diff --quiet -- estado.json && git ls-files --error-unmatch estado.json >/dev/null 2>&1; then
+            echo "estado.json sin cambios"; exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add estado.json
+          git commit -m "Actualizar estado de la red [skip ci]"
+          for i in 1 2 3; do
+            git pull --rebase --autostash origin "${GITHUB_REF_NAME}" && git push && exit 0
+            sleep $((i * 5))
+          done
+          echo "No se pudo guardar estado.json" >&2; exit 1

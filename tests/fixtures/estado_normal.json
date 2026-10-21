@@ -1,0 +1,21 @@
+{
+  "l1": {
+    "estado": "1",
+    "mensaje": "",
+    "mensaje_app": "Línea disponible",
+    "estaciones": [
+      {"nombre": "San Pablo L1", "codigo": "SP", "estado": "1", "combinacion": "L5", "descripcion": "Estación Operativa", "descripcion_app": "Habilitada", "mensaje": ""},
+      {"nombre": "Universidad Católica", "codigo": "UC", "estado": "1", "combinacion": "", "descripcion": "Estación Operativa", "descripcion_app": "Habilitada", "mensaje": ""},
+      {"nombre": "Los Dominicos", "codigo": "LD", "estado": "1", "combinacion": "", "descripcion": "Estación Operativa", "descripcion_app": "Habilitada", "mensaje": ""}
+    ]
+  },
+  "l4a": {
+    "estado": "1",
+    "mensaje": "",
+    "mensaje_app": "Línea disponible",
+    "estaciones": [
+      {"nombre": "Vicuña Mackenna L4A", "codigo": "VM", "estado": "1", "combinacion": "L4", "descripcion": "Estación Operativa", "descripcion_app": "Habilitada", "mensaje": ""},
+      {"nombre": "La Cisterna L4A", "codigo": "LC", "estado": "1", "combinacion": "L2", "descripcion": "Estación Operativa", "descripcion_app": "Habilitada", "mensaje": ""}
+    ]
+  }
+}

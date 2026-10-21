@@ -1,0 +1,26 @@
+name: Mantener activo
+
+# GitHub desactiva los workflows programados de repos públicos tras 60 días
+# sin actividad. Este latido mensual agrega un commit para evitarlo.
+on:
+  schedule:
+    - cron: '23 15 1 * *'   # día 1 de cada mes, 15:23 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  latido:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          date -u +"%Y-%m-%dT%H:%M:%SZ" > .github/latido.txt
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/latido.txt
+          git commit -m "Latido mensual [skip ci]"
+          git pull --rebase --autostash origin "${GITHUB_REF_NAME}"
+          git push
