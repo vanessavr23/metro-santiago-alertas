@@ -1,4 +1,8 @@
 __pycache__/
 *.pyc
-.env
 .venv/
+
+# Configuración y datos locales del monitor
+.env
+estado.json
+monitor.log

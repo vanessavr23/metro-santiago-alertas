@@ -128,5 +128,33 @@ class TestEnvio(unittest.TestCase):
         self.assertEqual(md, "**L1** *x* [ver](https://a.b) &")
 
 
+class TestConfigLocal(unittest.TestCase):
+    def test_env_no_pisa_variables_existentes(self):
+        with tempfile.TemporaryDirectory() as d:
+            env = Path(d) / ".env"
+            env.write_text('# comentario\nTELEGRAM_CHAT_ID="123"\nTELEGRAM_BOT_TOKEN=nuevo\n\nBASURA\n',
+                           encoding="utf-8")
+            with mock.patch.dict("os.environ", {"TELEGRAM_BOT_TOKEN": "existente"}, clear=True):
+                cm.cargar_env(env)
+                import os
+                self.assertEqual(os.environ["TELEGRAM_CHAT_ID"], "123")
+                self.assertEqual(os.environ["TELEGRAM_BOT_TOKEN"], "existente")
+
+    def test_log_recorta_archivo_grande(self):
+        with tempfile.TemporaryDirectory() as d:
+            log = Path(d) / "monitor.log"
+            log.write_text("x" * 5000, encoding="utf-8")
+            out, err = sys.stdout, sys.stderr
+            try:
+                cm.redirigir_salida(log, max_bytes=1000)
+                print("hola")
+                sys.stdout.close()
+            finally:
+                sys.stdout, sys.stderr = out, err
+            texto = log.read_text(encoding="utf-8")
+            self.assertLess(len(texto), 1000)
+            self.assertTrue(texto.rstrip().endswith("hola"))
+
+
 if __name__ == "__main__":
     unittest.main()

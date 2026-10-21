@@ -12,9 +12,13 @@ Uso:
     python check_metro.py --consultar      # mostrar el estado actual (no alerta ni guarda)
     python check_metro.py --probar-envio   # enviar un mensaje de prueba a los canales configurados
 
-Variables de entorno (opcionales; sin ellas los mensajes se imprimen en consola):
+Configuración (variables de entorno o archivo .env junto al script; sin ellas
+los mensajes se imprimen en consola):
     TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, DISCORD_WEBHOOK_URL
-    METRO_ESTADO_ARCHIVO   ruta del archivo de estado (por defecto: estado.json)
+    METRO_ESTADO_ARCHIVO   ruta del archivo de estado (por defecto: estado.json junto al script)
+
+Importante: metro.cl bloquea IPs de centros de datos extranjeros (p. ej. GitHub
+Actions responde 403). Debe ejecutarse desde una conexión chilena, como un PC de casa.
 """
 from __future__ import annotations
 
@@ -252,6 +256,32 @@ def guardar_estado(ruta: Path, estado: dict) -> None:
 
 
 # --------------------------------------------------------------------------- #
+# Configuracion local y registro
+# --------------------------------------------------------------------------- #
+def cargar_env(ruta: Path) -> None:
+    """Lee KEY=VALOR de un archivo .env sin pisar variables ya definidas."""
+    if not ruta.exists():
+        return
+    for linea in ruta.read_text(encoding="utf-8-sig").splitlines():
+        linea = linea.strip()
+        if not linea or linea.startswith("#") or "=" not in linea:
+            continue
+        clave, valor = linea.split("=", 1)
+        valor = valor.strip().strip('"').strip("'")
+        os.environ.setdefault(clave.strip(), valor)
+
+
+def redirigir_salida(ruta: Path, max_bytes: int = 1_000_000) -> None:
+    """Envía stdout/stderr a un archivo (para pythonw, que no tiene consola)."""
+    if ruta.exists() and ruta.stat().st_size > max_bytes:
+        contenido = ruta.read_bytes()[-max_bytes // 2:]
+        ruta.write_bytes(contenido)
+    f = open(ruta, "a", encoding="utf-8", buffering=1)
+    f.write(f"\n--- {hora_chile()} ---\n")
+    sys.stdout = sys.stderr = f
+
+
+# --------------------------------------------------------------------------- #
 # Flujo principal
 # --------------------------------------------------------------------------- #
 def verificar(ruta_estado: Path) -> int:
@@ -313,9 +343,22 @@ def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     p.add_argument("--consultar", action="store_true", help="mostrar el estado actual sin alertar ni guardar")
     p.add_argument("--probar-envio", action="store_true", help="enviar un mensaje de prueba")
-    p.add_argument("--estado", default=os.getenv("METRO_ESTADO_ARCHIVO", "estado.json"),
-                   help="archivo donde se guarda el último estado")
+    p.add_argument("--estado", default=None,
+                   help="archivo donde se guarda el último estado (por defecto: estado.json junto al script)")
+    p.add_argument("--log", default=None, help="escribir la salida en este archivo en vez de la consola")
     args = p.parse_args(argv)
+
+    # En Windows, la salida redirigida usa cp1252 y fallaría con emojis/tildes.
+    for flujo in (sys.stdout, sys.stderr):
+        if flujo is not None and hasattr(flujo, "reconfigure"):
+            flujo.reconfigure(encoding="utf-8", errors="replace")
+
+    carpeta = Path(__file__).resolve().parent
+    cargar_env(carpeta / ".env")
+    if args.log:
+        redirigir_salida(Path(args.log))
+    if args.estado is None:
+        args.estado = os.getenv("METRO_ESTADO_ARCHIVO") or str(carpeta / "estado.json")
 
     if args.probar_envio:
         canales = enviar(f"✅ <b>Monitor Metro</b>: mensaje de prueba ({html.escape(hora_chile())}).")
