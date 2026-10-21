@@ -25,8 +25,8 @@ desde **tu PC con Windows** y no usa IA al ejecutarse.
    cd metro-santiago-alertas
    powershell -ExecutionPolicy Bypass -File .\instalar_windows.ps1
    ```
-   Si no tienes git, usa *Code → Download ZIP* en GitHub, descomprime y ejecuta solo
-   la última línea dentro de esa carpeta.
+   Si no tienes git, usa *Code → Download ZIP* en GitHub, descomprime y haz
+   **doble clic en `INSTALAR.bat`** (equivale a la última línea).
 3. El instalador:
    - busca Python (y ofrece instalarlo si falta),
    - prueba la conexión a metro.cl,
