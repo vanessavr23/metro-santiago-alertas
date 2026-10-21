@@ -1,10 +1,10 @@
 name: Monitoreo Metro Santiago
 
 on:
-  schedule:
-    # Cada 10 minutos, desfasado (min 7, 17, 27...) para evitar la congestión de :00.
-    # GitHub usa UTC y puede retrasar algunos minutos las ejecuciones programadas.
-    - cron: '7-59/10 * * * *'
+  # DESACTIVADO: metro.cl bloquea las IPs de GitHub Actions (HTTP 403, "Acceso restringido").
+  # El monitor corre en un equipo con IP chilena; este workflow queda solo para pruebas manuales.
+  # schedule:
+  #   - cron: '7-59/10 * * * *'
   workflow_dispatch:
     inputs:
       probar_envio:
