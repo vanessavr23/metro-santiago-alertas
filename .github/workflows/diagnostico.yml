@@ -6,13 +6,10 @@ jobs:
     timeout-minutes: 3
     steps:
       - run: |
-          U=https://www.metro.cl/api/estadoRedDetalle.php
-          BR='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0 Safari/537.36'
-          echo "IP runner: $(curl -s https://api.ipify.org)"
-          p(){ echo "== $1"; shift; curl -s -o /tmp/b -w "HTTP %{http_code} | %{content_type} | server=%header{server}\n" "$@"; head -c 200 /tmp/b | tr '\n' ' '; echo; }
-          p "UA curl por defecto" "$U"
-          p "UA script" -A 'metro-santiago-alertas/1.0' "$U"
-          p "UA navegador" -A "$BR" "$U"
-          p "UA navegador + Referer + Accept-Language" -A "$BR" -e https://www.metro.cl/el-viaje/estado-red -H 'Accept-Language: es-CL,es;q=0.9' "$U"
-          p "Pagina estado-red (HTML)" -A "$BR" https://www.metro.cl/el-viaje/estado-red
-          p "Home" -A "$BR" https://www.metro.cl/
+          echo "== Texto de la pagina de bloqueo"
+          curl -s https://www.metro.cl/api/estadoRedDetalle.php | sed -e 's/<style.*<\/style>//' -e 's/<[^>]*>/ /g' | tr -s ' \n' | head -c 1500; echo
+          echo "== Geo de la IP del runner"
+          curl -s https://ipinfo.io/json; echo
+          echo "== Sustituto api.xor.cl"
+          curl -s -o /tmp/x -w "HTTP %{http_code} | %{content_type}\n" https://api.xor.cl/red/metro-network
+          head -c 600 /tmp/x; echo
